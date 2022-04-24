@@ -1,0 +1,62 @@
+#!/bin/bash
+
+
+
+
+
+
+MCF_FileName () {
+
+    SPATH="$1"
+
+    [ ! -d "$SPATH" ] && return 1
+
+    shift
+    SFILE="$1"
+
+    shift
+    EXT="$1"
+
+    SBASE="${SFILE##*/}"
+    BASE="${SBASE%.*}"
+
+    if [ "$EXT" = "" ]; then
+	if [[ "$SBASE" == *"."* ]]; then
+	    EXT=".${SBASE##*.}"
+	else
+	    EXT=""
+	fi
+    else
+	EXT=".$EXT"
+    fi
+
+    if [[ -f "$SPATH/$BASE""$EXT" || -d "$SPATH/$BASE""$EXT" || -L "$SPATH/$BASE""$EXT" ]] ; then
+	I="1"
+	while [ -f "$SPATH/$BASE ($I)""$EXT" ]; do
+	    I="$(($I+1))"
+	done
+	SNAME="$BASE ($I)$EXT"
+    else
+	SNAME="$BASE""$EXT"
+    fi
+
+    printf %s "$SNAME"
+
+} #MCF_FileName
+export -f MCF_FileName
+
+
+
+
+if [[ -f "$MCV_CONFIG_USER/globals" ]]; then
+    . "$MCV_CONFIG_USER/globals"
+fi
+
+
+
+
+if [[ "$1" == "filename" ]]; then
+    shift
+    MCF_FileName "$1" "$2" "$3"
+fi
+

@@ -1,0 +1,173 @@
+#!/bin/bash
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+
+
+# Batch rename multiple files with a phrase. Helper for Midnight Commander
+
+
+
+. /usr/local/lib/mcglobals
+
+
+
+
+if [ "$1" = "" ]; then
+    printf '\n\n'%s'\n\n' "No phrase given..."
+    exit 1
+fi
+
+
+if [ "$1" = "help" ]; then
+
+T_HELP="
+
+mcbatchrename [line] [files]
+
+
+    Files will be renamed according to line given by the user as the first argument.
+
+    LINE:
+	Following substitutions can be made:
+
+	%%		'percent' sign
+	%f		original file name
+	%b		original file's basename (extension stripped), (type %l, %u for lower- and upper case)
+	%x		original file's extention (%L, %U for lower and upper case)
+	%r		file's root directory
+
+	%D		current date (YYYY-MM-DD)
+	%t		timestamp (HH:MM:SS)
+	%H,%M,%S	hour, minute, second
+	%Y,%m,%d,%w	year, month, day, weekday
+
+	%n		Ordinal number (1,2,3,4,5...)
+	
+    EXAMPLES:
+
+	%b (%n).%x	Add ordinal numbers in brackets before extensions
+	%b.%x (%D)	Add date in brackets at the end
+	%b		Strip extensions
+	%b.txt		Change extensions to .txt
+	%b.%x.old	Add '.old' bit to the file
+
+
+
+"
+    printf %s "$T_HELP"
+    exit 2
+fi
+
+
+. /usr/local/lib/mcglobals
+
+
+SPHRASE="$1"
+shift
+
+
+
+
+TIMESTR="$(/bin/date +"%Y%m%d%w%H%M%S")"
+
+YEAR="${TIMESTR:0:4}"
+MONTH="${TIMESTR:4:2}"
+DAY="${TIMESTR:6:2}"
+WEEKDAY="${TIMESTR:8:1}"
+
+HOUR="${TIMESTR:9:2}"
+MINUTE="${TIMESTR:11:2}"
+SECOND="${TIMESTR:13:2}"
+
+TIMESTAMP="$HOUR:$MINUTE:$SECOND"
+DATE="$YEAR-$MONTH-$DAY"
+
+BACKUP_FILE="$PWD/batch_rename_backup_$(/bin/date +"%Y-%m-%d_%H:%M:%S").tmp"
+while [[ -f "$BACKUP_FILE" ]]; do
+    BACKUP_FILE="$PWD/batch_rename_backup_$(/bin/date +"%Y-%m-%d_%H:%M:%S").tmp"
+done
+
+i="0"
+
+
+
+while [ -n "$1" ]; do
+
+    printf '\n\n'%s'\n\n' "Processing $SFILE ..."
+
+    SFILE="$1"
+    SFILE="$(/bin/readlink -f "$SFILE")"
+    shift
+
+    SDIR="${SFILE%/*}"
+    SROOT="${SDIR##*/}"
+    SBASENAME="${SFILE##*/}"
+
+
+    if [[ "$SBASENAME" == *"."* ]]; then
+	SEXT="${SFILE##*.}"
+	SEXT_LOWER="${SEXT,,}"
+	SEXT_UPPER="${SEXT^^}"
+    else
+	SEXT=""
+	SEXT_LOWER=""
+	SEXT_UPPER=""
+    fi
+    SBASENAME="${SBASENAME%.*}"
+    SBASE_UPPER="${SBASENAME^^}"
+    SBASE_LOWER="${SBASENAME,,}"
+
+    i="$(($i+1))"
+
+    SNEW="$SPHRASE"
+    SNEW="${SNEW//%%/\/\/\/\/}"
+
+    SNEW="${SNEW//%b/$SBASENAME}"
+    SNEW="${SNEW//%f/$SFILE.$SEXT}"
+    SNEW="${SNEW//%l/$SBASE_LOWER}"
+    SNEW="${SNEW//%u/$SBASE_UPPER}"
+
+    SNEW="${SNEW//%x/$SEXT}"
+    SNEW="${SNEW//%L/$SEXT_LOWER}"
+    SNEW="${SNEW//%U/$SEXT_UPPER}"
+
+    SNEW="${SNEW//%r/$SROOT}"
+    SNEW="${SNEW//%n/$i}"
+
+    SNEW="${SNEW//%D/$DATE}"
+    SNEW="${SNEW//%t/$TIMESTAMP}"
+    SNEW="${SNEW//%y/$YEAR}"
+    SNEW="${SNEW//%m/$MONTH}"
+    SNEW="${SNEW//%d/$DAY}"
+    SNEW="${SNEW//%w/$WEEKDAY}"
+    SNEW="${SNEW//%H/$HOUR}"
+    SNEW="${SNEW//%M/$MINUTE}"
+    SNEW="${SNEW//%S/$SECOND}"
+
+    SNEW="${SNEW//\/\/\/\//%}"
+
+    SNEW="$(MCF_FileName "$SDIR" "$SNEW")"
+
+    printf '\n\n'%s'\n\n' "New name $SDIR/$SNEW"
+    printf %s'\n' "/bin/mv -- \"${SDIR//\"/\\\"}/${SNEW//\"/\\\"}\" \"${SFILE//\"/\\\"}\"" >> "$BACKUP_FILE"
+    /bin/mv "$SFILE" "$SDIR/$SNEW"
+
+done
+
+

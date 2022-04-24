@@ -1,0 +1,185 @@
+#!/bin/bash
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+
+# Wrapper for opening files from Midnight Commander in desktop environment
+
+
+. /usr/local/lib/mcglobals
+
+
+
+
+
+
+
+MCF_Run () {
+
+    APP="$1"
+    FILE="$2"
+
+    COMMAND="$(/bin/grep '^Exec=' "/usr/share/applications/$APP")"
+    COMMAND="${COMMAND#*=}"
+    FILE1="\"${FILE//"/\\"}\""
+
+    if [[ "$COMMAND" == *"%f"* ]]; then
+        COMMAND="${COMMAND//%f/$FILE1}"
+    elif [[ "$COMMAND" == *"%F"* ]]; then
+        COMMAND="${COMMAND//%F/$FILE1}"
+    elif [[ "$COMMAND" == *"%u"* ]]; then
+        COMMAND="${COMMAND//%u/$FILE1}"
+    elif [[ "$COMMAND" == *"%U"* ]]; then
+        COMMAND="${COMMAND//%U/$FILE1}"
+    else
+        COMMAND="$COMMAND $FILE1"
+    fi
+
+    if [[ "$(/bin/grep '^Terminal=true' "/usr/share/applications/$APP")" != "" ]]; then
+        COMMAND="${MCV_TERMINAL/%f/$COMMAND}"
+    fi
+    
+    eval "$COMMAND"  > /dev/null 2>&1 &
+
+} #MCF_Run
+
+
+
+
+
+
+
+MCF_Open () {
+
+    FILE="$1"
+    MIMETYPE="$(/usr/bin/file --mime-type -b "$FILE")"
+
+    APP="$(/bin/grep '^'"$MIMETYPE"'=' /usr/share/applications/defaults.list)"
+    if [[ "$APP" == "" ]]; then
+        APP="$(/bin/grep -m 1 '^'"$MIMETYPE"'=' "$HOME/.local/share/applications/defaults.list")"
+    fi
+    if [[ "$APP" == "" ]]; then
+        APP="$(/bin/grep -m 1 '^MimeType=.*'"$MIMETYPE"';' /usr/share/applications/*.desktop)"
+        APP="${APP%%:*}"
+        APP="${APP##*/}"
+    else
+        APP="${APP#*=}"
+    fi
+
+    if [[ "$APP" != "" ]]; then
+        MCF_Run "$APP" "$FILE"
+    else
+        printf "\nCould not find suitable application..."
+    fi
+
+} #MCF_Open
+
+
+
+
+
+MCF_OpenWith () {
+
+    FILE="$1"
+    if [[ "$MIMETYPE" == "" ]]; then
+        MIMETYPE="$(/usr/bin/file --mime-type -b "$FILE")"
+    fi
+
+    mapfile -t APP_FILES < <(/bin/grep '^MimeType=.*'"$MIMETYPE"';' /usr/share/applications/*.desktop | /usr/bin/cut -d':' -f 1)
+    i=0
+    for SAPP in ${APP_FILES[@]}; do
+        APP_FILES[i]="${SAPP##*/}"
+        NAME="$(/bin/grep -m 1 '^Name=' "$SAPP")"
+        APP_NAMES[i]="${NAME#*=}"
+        i="$(($i+1))"    
+    done
+
+    clear
+
+    i=0
+    printf "\n\n\tChoose application to run $FILE:\n"
+    for SAPP in ${APP_FILES[@]}; do
+        printf "\n\t\t[$(($i+1))]\t"
+        printf %s "${APP_NAMES[$i]}"
+        i="$(($i+1))"
+    done
+
+    printf "\n\n\t\t\tYour choice or command? "
+    
+    read CHOICE
+
+    if [[ "$CHOICE" =~ ^[0-9]+$ ]]; then
+        APP=${APP_FILES["$(($CHOICE-1))"]}
+        EXISTS="True"
+        MCF_Run "$APP" "$FILE"
+
+    elif [[ "$CHOICE" != "" ]]; then
+        APP="$CHOICE"
+        EXISTS="False"
+
+        FILE1="\"${FILE//"/\\"}\""
+        eval "$APP $FILE1" > /dev/null 2>&1 & 
+    fi
+
+
+} #MCF_OpenWith
+
+
+
+
+
+
+
+
+
+
+OPEN_WITH="False"
+NO_HIST="False"
+
+
+
+while [[ "$1" != "" ]]; do
+
+    ARG="$1"
+    shift
+
+    case "$ARG" in
+        '-w')
+            OPEN_WITH="True"
+        ;;
+        '-no_hist')
+            NO_HIST="True"
+        ;;
+        '-h')    
+            HELP=""
+            printf %s "$HELP"
+            exit
+        ;;
+        *)
+            if [[ "$OPEN_WITH" == "True" ]]; then
+                MCF_OpenWith "$ARG"
+                exit
+            else
+                MCF_Open "$ARG"
+            fi
+            
+        ;;
+    esac
+
+done
+
