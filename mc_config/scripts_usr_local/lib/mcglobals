@@ -1,0 +1,109 @@
+#!/bin/bash
+
+
+
+# Functions for Midnight Commander helper scripts
+
+
+
+
+
+
+TF_UrlDecode () {
+
+    local url_encoded="${1//+/ }"
+    printf '%b' "${url_encoded//%/\\x}"
+
+} #TF_UrlDecode
+export -f TF_UrlDecode
+
+
+
+
+
+
+
+TF_UrlEncode () {
+    old_lc_collate=$LC_COLLATE
+    LC_COLLATE=C
+
+    local length="${#1}"
+    for (( i = 0; i < length; i++ )); do
+        local c="${1:i:1}"
+        case $c in
+            [a-zA-Z0-9.~_-]) printf "$c" ;;
+            '/') printf "$c" ;;
+            *) printf '%%%02X' "'$c" ;;
+        esac
+    done
+
+    LC_COLLATE=$old_lc_collate
+} #TF_UrlEncode
+export -f TF_UrlEncode
+
+
+
+
+TF_htmlEscape () {
+    local s
+    s=${1//&/&amp;}
+    s=${s//</&lt;}
+    s=${s//>/&gt;}
+    s=${s//'"'/&quot;}
+    printf -- %s "$s"
+} #TF_htmlEscape
+export -f TF_htmlEscape 
+
+
+
+
+
+
+MCF_FileName () {
+
+    SPATH="$1"
+
+    [ ! -d "$SPATH" ] && return 1
+
+    shift
+    SFILE="$1"
+
+    shift
+    EXT="$1"
+
+    SBASE="${SFILE##*/}"
+    BASE="${SBASE%.*}"
+
+    if [ "$EXT" = "" ]; then
+	if [[ "$SBASE" == *"."* ]]; then
+	    EXT=".${SBASE##*.}"
+	else
+	    EXT=""
+	fi
+    else
+	EXT=".$EXT"
+    fi
+
+    if [[ -f "$SPATH/$BASE""$EXT" || -d "$SPATH/$BASE""$EXT" || -L "$SPATH/$BASE""$EXT" ]] ; then
+	I="1"
+	while [ -f "$SPATH/$BASE ($I)""$EXT" ]; do
+	    I="$(($I+1))"
+	done
+	SNAME="$BASE ($I)$EXT"
+    else
+	SNAME="$BASE""$EXT"
+    fi
+
+    printf %s "$SNAME"
+
+} #MCF_FileName
+export -f MCF_FileName
+
+
+
+
+if [[ "$1" == "filename" ]]; then
+    shift
+    MCF_FileName "$1" "$2" "$3"
+fi
+

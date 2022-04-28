@@ -1,0 +1,60 @@
+#!/bin/bash
+
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+#Wrapper for displaying system information - silly, really...
+
+
+
+
+
+printf "\n\n\e[1;39m	----------------        SYSTEM  REPORT        ------------------\n\n\n"
+
+
+/usr/bin/inxi -Fx
+
+
+printf "\n\n\n\e[1;39m	Plugged Devices PCI\n\n\e[0;39m"
+
+/usr/bin/lspci
+
+printf "\n\n\n\e[1;39m	Plugged Devices USB\n\n\e[0;39m"
+
+/usr/bin/lsusb
+
+
+printf "\n\n\n\e[1;39m	Block Devices\n\n\e[0;39m"
+
+/bin/lsblk
+
+
+printf "\n\n\n\e[1;39m	Loaded Kernel modules\n\n\e[0;39m"
+
+/bin/lsmod
+
+printf "\n\n\n\e[1;39m	Network interfaces\n\n\e[0;39m"
+
+/sbin/ifconfig
+
+printf "\n\n	Wireless\n\n"
+
+/sbin/iwconfig 2>/dev/null
+
+printf "\n\n\e[1;39m	----------------        END OF REPORT        ------------------\n\n\n\e[0;39m"
+

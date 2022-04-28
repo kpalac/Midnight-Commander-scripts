@@ -1,0 +1,195 @@
+#!/bin/bash
+
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+
+
+# Wrapper for moving files/dirs to Trash. For use with Midnight Commander
+. /usr/local/lib/mcglobals
+ERR="0"
+
+
+if [ "$1" = "move" ]; then
+
+
+    shift
+
+    while [ -n "$1" ]; do
+
+	SFILE="$1"
+	SFILE="$(/bin/readlink -f -z "$SFILE")"
+	shift
+
+	printf '\n\n'%s "Moving $SFILE to Trash"
+
+	SNAME="$(/usr/bin/basename "$SFILE") ($(/bin/ls ~/.local/share/Trash/files | /usr/bin/wc -l))"
+	/bin/mv "$SFILE" "$HOME"/.local/share/Trash/files/"$SNAME"
+
+	if [[ -d "$HOME"/.local/share/Trash/files/"$SNAME" ]]; then
+	    /bin/rm -- "$HOME"/.local/share/Trash/files/"$SNAME"/.tcm_directory_listing.tmp
+	fi
+
+	printf "[Trash Info]\nPath=" > "$HOME/.local/share/Trash/info/$SNAME".trashinfo
+	printf %s "$(/bin/readlink -f "$SFILE")" >> "$HOME/.local/share/Trash/info/$SNAME".trashinfo
+	printf "\nDeletionDate=" >> "$HOME/.local/share/Trash/info/$SNAME".trashinfo
+	printf %s "$(/bin/date +"%Y-%m-%dT%T")" >> "$HOME/.local/share/Trash/info/$SNAME".trashinfo
+	printf "\n" >> "$HOME/.local/share/Trash/info/$SNAME".trashinfo
+	if [[ "$?" = "0" ]]; then
+	    printf %s'\n\n'"Done."
+	else
+	    printf %s'\n\n'"Error occurred!"
+	    ERR="1"
+	fi
+
+    done
+
+    return "$ERR"
+
+
+elif [ "$1" = "restore" ]; then
+
+
+    shift
+
+    while [ -n "$1" ]; do
+
+	SFILE="$1"
+	SFILE="$(/bin/readlink -f "$SFILE")"
+	shift
+
+	printf '\n\n'%s "Restoring $SFILE from Trash"
+
+	SNAME="$(/usr/bin/basename "$SFILE")"
+	SRESTORE="$(/bin/grep -E '^Path=' ~/.local/share/Trash/info/"$SNAME".trashinfo | /usr/bin/cut -d '=' -f2-)"
+	SPATH="$(/usr/bin/dirname "$SRESTORE")"
+
+	if [ ! -d "$SPATH" ]; then
+	    /bin/mkdir -p "$SPATH"
+	fi
+	SRESTORE="$(TF_FileName "$SPATH" "$SRESTORE")"
+
+	/bin/mv "$SFILE" "$SPATH/$SRESTORE"
+	/bin/rm "$HOME/.local/share/Trash/info/$SNAME.trashinfo"
+	if [[ "$?" = "0" ]]; then
+	    printf %s'\n\n'"Done."
+	else
+	    printf %s'\n\n'"Error occurred!"
+	    ERR="1"
+	fi
+
+    done
+
+    return "$ERR"
+
+
+elif [ "$1" = "delete" ]; then
+
+
+    shift
+
+    while [ -n "$1" ]; do
+
+	SFILE="$1"
+	SFILE="$(/bin/readlink -f "$SFILE")"
+	shift
+
+	printf '\n\n'%s "Deleting $SFILE from Trash"
+
+	SNAME="$(/usr/bin/basename "$SFILE")"
+	if [ -f "$HOME/.local/share/Trash/files/$SNAME" ]; then
+	    /bin/rm "$HOME/.local/share/Trash/files/$SNAME" "$HOME/.local/share/Trash/info/$SNAME.trashinfo"
+	elif [ -d "$HOME/.local/share/Trash/files/$SNAME" ]; then
+	    /bin/rm -rf "$HOME/.local/share/Trash/files/$SNAME" 
+	    /bin/rm "$HOME/.local/share/Trash/info/$SNAME.trashinfo"
+	    if [[ "$?" = "0" ]]; then
+		printf %s'\n\n'"Done"
+	    else
+		printf %s'\n\n'"Error_occurred"
+		ERR="1"
+	    fi
+	else
+	    printf %s'\n\n' "$SNAME is neither a file nor a directory"
+	    ERR="1"
+	fi
+
+    done
+
+    return "$ERR"
+
+
+elif [ "$1" = "shred" ]; then
+
+
+    shift
+
+    while [ -n "$1" ]; do
+
+	SFILE="$1"
+	SFILE="$(/bin/readlink -f "$SFILE")"
+	shift
+
+	printf '\n\n'%s "Shredding $SFILE ..."
+
+	SNAME="$(/usr/bin/basename "$SFILE")"
+    
+	if [ -f "$HOME/.local/share/Trash/files/$SNAME" ]; then
+	    /usr/bin/shred -fvzu -n 5 "$HOME/.local/share/Trash/files/$SNAME" "$HOME/.local/share/Trash/info/$SNAME.trashinfo"
+	elif [ -d "$HOME/.local/share/Trash/files/$SNAME" ]; then
+	    /usr/bin/shred -fvzu -n 5 "$HOME/.local/share/Trash/files/$SNAME" 
+	    /usr/bin/shred -fvzu -n 5 "$HOME/.local/share/Trash/info/$SNAME.trashinfo"
+	    if [[ "$?" = "0" ]]; then
+		printf %s'\n\n'"Done."
+	    else
+		printf %s'\n\n'"Error occurred!"
+		ERR="1"
+	    fi
+	else
+	    printf %s'\n\n' "$SNAME is neither a file nor a directory"
+	    ERR="1"
+	fi
+
+    done
+
+    return "$ERR"
+
+
+elif [ "$1" = "empty" ]; then
+
+    printf '\n\n'%s "Emptying Trash..."
+    /bin/rm "$HOME/.local/share/Trash/files/"* "$HOME/.local/share/Trash/info/"*".trashinfo"
+    if [[ "$?" = "0" ]]; then
+	printf %s'\n\n'"Done."
+    else
+	printf %s'\n\n'"Error occurred!"
+	return 1
+    fi
+
+else
+
+
+
+T_HELP="
+
+
+"
+
+    printf %s "$T_HELP"
+    exit 2
+
+fi
