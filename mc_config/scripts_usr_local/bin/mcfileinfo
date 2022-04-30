@@ -1,0 +1,114 @@
+#!/bin/bash
+
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+
+
+
+# Script to extract file/dir information with various tools (exif, mimetype, attributes, size etc.)
+
+
+
+
+
+while [ -n "$1" ]; do
+
+    SFILE="$1"
+    SFILE="$(/bin/readlink -f "$SFILE")"
+    
+    shift
+
+printf "\n\n\e[1;39m	----------------        FILE REPORT        ------------------\n\n\n\e[0;39m"
+
+
+
+	SNAME="${SFILE##*/}"
+	SPATH=${SFILE%/*}
+
+	MIMETYPE="$(/usr/bin/mimetype -b "$SFILE")"
+	MIMETYPE_MG="$(/usr/bin/mimetype -b -M "$SFILE")"
+	WHATIS="$(/usr/bin/whatis "$SFILE" 2>/dev/null)"
+
+	printf "		$SPATH/\e[1;39m$SNAME\e[0;39m\n\n\n"
+
+	if [ "$WHATIS" != "" ]; then
+	    printf "WhatIs: \e[1;39m $WHATIS\e[0;39m\n"
+	fi
+
+	if [ "$MIMETYPE" = "$MIMETYPE_MG" ] || [ "$MIMETYPE_MG" = "" ]; then
+	    printf "MIME Info:\e[1;39m $MIMETYPE\e[0;39m\n"
+	else
+	    printf "MIME Info:\e[1;39m $MIMETYPE ($MIMETYPE_MG)\e[0;39m\n"
+	fi
+
+	printf "$(/usr/bin/file -b "$SFILE")"
+
+	if [ -L "$SFILE" ]; then
+	    DELINKED="$(/usr/bin/file -b -L "$SFILE")"
+	    printf "Link target: \e[1;39m $DELINKED\e[0;39m"
+	fi
+
+	if [ "$MIMETYPE" = "application/x-desktop" ]; then
+	    TMP="$(/bin/cat "$SFILE")"
+	    COMMENT="$(echo "$TMP" | /bin/grep -m1 'Comment=')"
+	    COMMENT="${COMMENT/Comment=/}"
+	    APP_NAME="$(echo "$TMP" | /bin/grep -m1 'Name=')"
+	    APP_NAME="${APP_NAME/Name=/}"
+	    printf "\n\nApplication info: \e[1;39m$APP_NAME\e[0;39m ----  \e[1;39m$COMMENT\e[0;39m\n\n"
+	fi
+
+	if [ "$SPATH" = "$HOME/.local/share/Trash/files" ]; then
+	    printf "\n\n\e[1;39m		$T_Trash_item_info \e[0;39m\n\n"
+	    if [ -f "$HOME/.local/share/Trash/info/$SNAME.trashinfo" ]; then
+		/bin/cat "$HOME/.local/share/Trash/info/$SNAME.trashinfo"
+	    else
+		if [ -f "$HOME/.local/share/Trash/info/$SNAME.trash" ]; then
+		    /bin/cat "$HOME/.local/share/Trash/info/$SNAME.trash"
+		else
+		    printf "NONE"
+		fi
+	    fi
+
+	    printf "\n\n"
+	fi
+
+	if [ "$MIMETYPE" = "inode/directory" ]; then
+	    printf "\n\n\n\e[1;39m		Directory info ($(/usr/bin/du -h "$SFILE" | /usr/bin/tail -1 | /usr/bin/cut -f1)) : \e[0;39m\n\n"
+	    /usr/bin/du -h -a "$SFILE"
+	
+	else
+
+	    printf "\n\n\n\e[1;39m		Metadata \n\n\e[0;39m"
+	    EXIF="$(/usr/bin/exiftool -a -u -g "$SFILE")"
+	    printf "\e[1;39mTags \n\n\e[0;39m"
+	    printf %s'\n' "$EXIF" | /bin/grep -m1 '^Author '
+	    printf %s'\n' "$EXIF" | /bin/grep -m1 '^Title '
+	    printf %s'\n' "$EXIF" | /bin/grep -m1 '^Comment '
+	    printf "\n\n"
+	    /usr/bin/extract "$SFILE"
+	    printf "\n\n\n\e[1;39m		Exif metadata \e[0;39m \n\n"
+	    printf %s "$EXIF"
+	
+	fi
+
+	printf "\n\n\e[1;39m	----------------        END OF REPORT        ------------------\n\n\n\n\n\e[0;39m"
+
+done
+
+exit 0
