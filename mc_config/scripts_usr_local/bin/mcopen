@@ -1,0 +1,180 @@
+#!/bin/bash
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+
+# Wrapper for opening files from Midnight Commander in desktop environment
+
+. /usr/local/lib/mcglobals
+[ "$MC_THUMBNAILS" != "no" ] && . /usr/local/bin/mcthumbnailer ///source
+
+
+
+
+
+MCF_Run () {
+
+    MIMETYPE="$1"
+    APP="$2"
+    FILE="$3"
+
+    if [[ -f "$APP" ]]; then
+        APP_TMP="$(< "$APP")"
+    else
+        APP_TMP="$(< "/usr/share/applications/$APP")"
+    fi
+
+    COMMAND="$(printf -- %s "$APP_TMP" | /bin/grep -m 1 '^Exec=')"
+    COMMAND="${COMMAND#*=}"
+    COMMAND_ENC="$COMMAND"
+    
+    if [[ "$FILE" != "" ]]; then
+        FILE1="\"${FILE//"/\\"}\""
+    else
+        FILE1=""
+    fi
+
+    if [[ "$COMMAND" == *"%f"* ]]; then
+        COMMAND="${COMMAND//%f/$FILE1}"
+    elif [[ "$COMMAND" == *"%F"* ]]; then
+        COMMAND="${COMMAND//%F/$FILE1}"
+    elif [[ "$COMMAND" == *"%u"* ]]; then
+        COMMAND="${COMMAND//%u/$FILE1}"
+    elif [[ "$COMMAND" == *"%U"* ]]; then
+        COMMAND="${COMMAND//%U/$FILE1}"
+    else
+        COMMAND="$COMMAND $FILE1"
+    fi
+
+    if [[ "$(printf -- %s "$APP_TMP" | /bin/grep -m 1 '^Terminal=true')" != "" ]]; then
+        COMMAND="x-terminal-emulator -e $COMMAND"
+    fi
+    
+    eval "$COMMAND"  > /dev/null 2>&1 &
+
+    if [[ "$MC_THUMBNAILS" == 'dir' ]]; then
+        TF_TNGenDir "$FILE"
+    elif [[ "$MC_THUMBNAILS" == 'file' ]]; then
+        TF_TNGen "$FILE"
+    fi
+
+
+} #MCF_Run
+
+
+
+
+
+
+
+MCF_Open () {
+
+    FILE="$1"
+    shift
+    APP="$1"
+
+    if [[ "$APP" == "/usr/share/applications/"*".desktop" ]]; then
+        MCF_Run "dummy" "$APP" "$FILE" 
+        return 0        
+    fi
+
+    if [[ "$FILE" =~ "http://"* || "$FILE" =~ "https://"* ]]; then
+        MIMETYPE="text/html"
+    else
+        MIMETYPE="$(/usr/bin/mimetype -b "$FILE")"
+    fi
+
+    if [[ "$MIMETYPE" == "application/x-desktop" ]]; then
+        MCF_Run "$MIMETYPE" "$FILE"
+        return 0
+    fi
+
+    APP="$(/bin/grep '^'"$MIMETYPE"'=' /usr/share/applications/defaults.list)"
+    if [[ "$APP" == "" ]]; then
+        APP="$(/bin/grep -m 1 '^'"$MIMETYPE"'=' "$HOME/.local/share/applications/defaults.list")"
+    fi
+    if [[ "$APP" == "" ]]; then
+        APP="$(/bin/grep -m 1 '^MimeType=.*'"$MIMETYPE"';' /usr/share/applications/*.desktop)"
+        APP="${APP%%:*}"
+        APP="${APP##*/}"
+    else
+        APP="${APP#*=}"
+    fi
+
+    if [[ "$APP" != "" ]]; then
+        MCF_Run "$MIMETYPE" "$APP" "$FILE"
+    else
+        [[ "$MC_NOTIFY" == 'true' ]] &&  /usr/bin/notify-send -t 0 -i error "Could not find suitable application ($MIMETYPE)!"
+        printf "\nCould not find suitable application..."
+    fi
+
+} #MCF_Open
+
+
+
+
+
+
+
+
+OPEN_WITH="false"
+PARAMS_END="false"
+APP=""
+
+while [[ "$1" != "" ]]; do
+
+    ARG="$1"
+    shift
+
+    case "$ARG" in
+        '-w')
+            if [[ "$PARAMS_END" == "false" ]]; then
+                APP="$1"
+                shift
+            else
+                MCF_Open "$ARG" "$APP"
+            fi
+        ;;
+        '--')
+            PARAMS_END="true"
+        ;;
+        '-h')
+            if [[ "$PARAMS_END" == "false" ]]; then
+                
+                HELP="
+mcopen [option] [files]
+
+    Open with assigned desktop application according to detected mimetype
+
+    option:
+        -w [app]        open file with selected .desktop application file
+        -h              show this
+
+
+"
+                printf %s "$HELP"
+                exit
+            else
+                MCF_Open "$ARG" "$APP"
+            fi
+        ;;
+        *) MCF_Open "$ARG" "$APP" ;;
+    esac
+
+done
+
