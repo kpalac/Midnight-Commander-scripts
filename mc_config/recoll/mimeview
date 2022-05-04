@@ -1,0 +1,156 @@
+# The system-wide configuration files for recoll are located in:
+#   /usr/share/recoll/examples
+# The default configuration files are commented, you should take a look
+# at them for an explanation of what can be set (you could also take a look
+# at the manual instead).
+# Values set in this file will override the system-wide values for the file
+# with the same name in the central directory. The syntax for setting
+# values is identical.
+
+xallexcepts = application/epub+zip application/msword application/ogg appl\
+ication/pdf application/postscript application/vnd.ms-excel \
+application/vnd.ms-powerpoint application/vnd.oasis.opendocu\
+ment.presentation application/vnd.oasis.opendocument.spreads\
+heet application/vnd.oasis.opendocument.text application/vnd\
+.openxmlformats-officedocument.presentationml.presentation a\
+pplication/vnd.openxmlformats-officedocument.presentationml.\
+template application/vnd.openxmlformats-officedocument.sprea\
+dsheetml.sheet application/vnd.openxmlformats-officedocument\
+.spreadsheetml.template application/vnd.openxmlformats-offic\
+edocument.wordprocessingml.document application/vnd.openxmlf\
+ormats-officedocument.wordprocessingml.template application/\
+vnd.sun.xml.calc application/vnd.sun.xml.calc.template appli\
+cation/vnd.sun.xml.draw application/vnd.sun.xml.draw.templat\
+e application/vnd.sun.xml.impress application/vnd.sun.xml.im\
+press.template application/vnd.sun.xml.math application/vnd.\
+sun.xml.writer application/vnd.sun.xml.writer.global applica\
+tion/vnd.sun.xml.writer.template application/vnd.wordperfect\
+ application/x-7z-compressed application/x-abiword applicati\
+on/x-all application/x-awk application/x-chm application/x-d\
+ia-diagram application/x-dvi application/x-flac application/\
+x-fsdirectory application/x-fsdirectory|parentopen applicati\
+on/x-gnote application/x-gnuinfo application/x-gnumeric appl\
+ication/x-kword application/x-lyx application/x-mimehtml app\
+lication/x-mobipocket-ebook application/x-okular-notes appli\
+cation/x-perl application/x-rar application/x-scribus applic\
+ation/x-shellscript application/x-tar application/x-tex appl\
+ication/x-webarchive application/xml application/zip audio/m\
+peg audio/x-karaoke image/bmp image/gif image/jpeg image/png\
+ image/svg+xml image/tiff image/vnd.djvu image/x-ms-bmp imag\
+e/x-xcf image/x-xpmi inode/directory inode/directory|parento\
+pen message/rfc822 text/calendar text/html text/html|chm tex\
+t/html|epub text/html|gnuinfo text/plain text/rtf text/x-awk\
+ text/x-c text/x-c+ text/x-c++ text/x-csv text/x-fictionbook\
+ text/x-gaim-log text/x-html-aptosid-man text/x-html-sidux-m\
+an text/x-ini text/x-mail text/x-man text/x-perl text/x-purp\
+le-html-log text/x-purple-log text/x-python text/x-shellscri\
+pt text/x-tex text/xml video/3gpp video/mp2p video/mp2t vide\
+o/mp4 video/mpeg video/quicktime video/x-matroska video/x-ms\
+-asf video/x-msvideo
+
+[view]
+application/msword = /usr/local/bin/mcopen %f
+application/epub+zip = /usr/local/bin/mcopen %f
+application/ogg = /usr/local/bin/mcopen %f
+application/pdf = /usr/local/bin/mcopen %f
+application/postscript = /usr/local/bin/mcopen %f
+application/vnd.ms-excel = /usr/local/bin/mcopen %f
+application/vnd.ms-powerpoint = /usr/local/bin/mcopen %f
+application/vnd.oasis.opendocument.presentation = /usr/local/bin/mcopen %f
+application/vnd.oasis.opendocument.spreadsheet = /usr/local/bin/mcopen %f
+application/vnd.oasis.opendocument.text = /usr/local/bin/mcopen %f
+application/vnd.openxmlformats-officedocument.presentationml.presentation = /usr/local/bin/mcopen %f
+application/vnd.openxmlformats-officedocument.presentationml.template = /usr/local/bin/mcopen %f
+application/vnd.openxmlformats-officedocument.spreadsheetml.sheet = /usr/local/bin/mcopen %f
+application/vnd.openxmlformats-officedocument.spreadsheetml.template = /usr/local/bin/mcopen %f
+application/vnd.openxmlformats-officedocument.wordprocessingml.document = /usr/local/bin/mcopen %f
+application/vnd.openxmlformats-officedocument.wordprocessingml.template = /usr/local/bin/mcopen %f
+application/vnd.sun.xml.calc = /usr/local/bin/mcopen %f
+application/vnd.sun.xml.calc.template = /usr/local/bin/mcopen %f
+application/vnd.sun.xml.draw = /usr/local/bin/mcopen %f
+application/vnd.sun.xml.draw.template = /usr/local/bin/mcopen %f
+application/vnd.sun.xml.impress = /usr/local/bin/mcopen %f
+application/vnd.sun.xml.impress.template = /usr/local/bin/mcopen %f
+application/vnd.sun.xml.math = /usr/local/bin/mcopen %f
+application/vnd.sun.xml.writer = /usr/local/bin/mcopen %f
+application/vnd.sun.xml.writer.global = /usr/local/bin/mcopen %f
+application/vnd.sun.xml.writer.template = /usr/local/bin/mcopen %f
+application/vnd.wordperfect = /usr/local/bin/mcopen %f
+application/x-7z-compressed = /usr/local/bin/mcopen %f
+application/x-abiword = /usr/local/bin/mcopen %f
+application/x-all = /usr/local/bin/mcopen %f
+application/x-awk = /usr/local/bin/mcopen %f
+application/x-chm = /usr/local/bin/mcopen %f
+application/x-dia-diagram = /usr/local/bin/mcopen %f
+application/x-dvi = /usr/local/bin/mcopen %f
+application/x-flac = /usr/local/bin/mcopen %f
+application/x-fsdirectory = /usr/local/bin/mcopen %f
+application/x-fsdirectory|parentopen = /usr/local/bin/mcopen %f
+application/x-gnote = /usr/local/bin/mcopen %f
+application/x-gnuinfo = /usr/local/bin/mcopen %f
+application/x-gnumeric = /usr/local/bin/mcopen %f
+application/x-kword = /usr/local/bin/mcopen %f
+application/x-lyx = /usr/local/bin/mcopen %f
+application/x-mimehtml = /usr/local/bin/mcopen %f
+application/x-mobipocket-ebook = /usr/local/bin/mcopen %f
+application/x-okular-notes = /usr/local/bin/mcopen %f
+application/x-perl = /usr/local/bin/mcopen %f
+application/x-rar = /usr/local/bin/mcopen %f
+application/x-scribus = /usr/local/bin/mcopen %f
+application/x-shellscript = /usr/local/bin/mcopen %f
+application/x-tar = /usr/local/bin/mcopen %f
+application/x-tex = /usr/local/bin/mcopen %f
+application/x-webarchive = /usr/local/bin/mcopen %f
+application/xml = /usr/local/bin/mcopen %f
+application/zip = /usr/local/bin/mcopen %f
+audio/mpeg = /usr/local/bin/mcopen %f
+audio/x-karaoke = /usr/local/bin/mcopen %f
+image/bmp = /usr/local/bin/mcopen %f
+image/gif = /usr/local/bin/mcopen %f
+image/jpeg = /usr/local/bin/mcopen %f
+image/png = /usr/local/bin/mcopen %f
+image/svg+xml = /usr/local/bin/mcopen %f
+image/tiff = /usr/local/bin/mcopen %f
+image/vnd.djvu = /usr/local/bin/mcopen %f
+image/x-ms-bmp = /usr/local/bin/mcopen %f
+image/x-xcf = /usr/local/bin/mcopen %f
+image/x-xpmi = /usr/local/bin/mcopen %f
+inode/directory = /usr/local/bin/mcopen %f
+inode/directory|parentopen = /usr/local/bin/mcopen %f
+message/rfc822 = /usr/local/bin/mcopen %f
+text/calendar = /usr/local/bin/mcopen %f
+text/html = /usr/local/bin/mcopen %f
+text/html|chm = /usr/local/bin/mcopen %f
+text/html|epub = /usr/local/bin/mcopen %f
+text/html|gnuinfo = /usr/local/bin/mcopen %f
+text/plain = /usr/local/bin/mcopen %f
+text/rtf = /usr/local/bin/mcopen %f
+text/x-awk = /usr/local/bin/mcopen %f
+text/x-c = /usr/local/bin/mcopen %f
+text/x-c+ = /usr/local/bin/mcopen %f
+text/x-c++ = /usr/local/bin/mcopen %f
+text/x-csv = /usr/local/bin/mcopen %f
+text/x-fictionbook = /usr/local/bin/mcopen %f
+text/x-gaim-log = /usr/local/bin/mcopen %f
+text/x-html-aptosid-man = /usr/local/bin/mcopen %f
+text/x-html-sidux-man = /usr/local/bin/mcopen %f
+text/x-ini = /usr/local/bin/mcopen %f
+text/x-mail = /usr/local/bin/mcopen %f
+text/x-man = /usr/local/bin/mcopen %f
+text/x-perl = /usr/local/bin/mcopen %f
+text/x-purple-html-log = /usr/local/bin/mcopen %f
+text/x-purple-log = /usr/local/bin/mcopen %f
+text/x-python = /usr/local/bin/mcopen %f
+text/x-shellscript = /usr/local/bin/mcopen %f
+text/x-tex = /usr/local/bin/mcopen %f
+text/xml = /usr/local/bin/mcopen %f
+video/3gpp = /usr/local/bin/mcopen %f
+video/mp2p = /usr/local/bin/mcopen %f
+video/mp2t = /usr/local/bin/mcopen %f
+video/mp4 = /usr/local/bin/mcopen %f
+video/mpeg = /usr/local/bin/mcopen %f
+video/quicktime = /usr/local/bin/mcopen %f
+video/x-matroska = /usr/local/bin/mcopen %f
+video/x-ms-asf = /usr/local/bin/mcopen %f
+video/x-msvideo = /usr/local/bin/mcopen %f
+
