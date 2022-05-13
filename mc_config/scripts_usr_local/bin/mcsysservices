@@ -1,0 +1,443 @@
+#!/bin/bash
+
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+
+
+
+# This is a script to quickly setup systemd services and couple of other things for Midnight Commander menu
+
+
+. /usr/local/lib/mcCLIinterface
+. /usr/local/lib/mcglobals
+
+
+
+
+
+PHRASE=""
+
+OPTION="1"
+PAGE="0"
+PAGES="0"
+
+CURR_ITEM=""
+CURR_DESC=""
+
+export -a RESULTS
+
+
+
+
+TF_Redraw ()
+{
+
+    WIDTH="$(/usr/bin/tput cols)"
+    HEIGHT="$(/usr/bin/tput lines)"
+
+    PUTY="$(( ($HEIGHT / 2) - 10))"
+    PUTX="$(( ($WIDTH / 2) - 45))"
+
+    printfxy $PUTY $PUTX	"		Services: \e[1;$TEXTCOL $(TF_Nice 100 "$PHRASE")\e[0;$TEXTCOL\033[0K"
+
+    printfxy $(($PUTY+2)) $PUTX	"\e[1;$LINECOL	Page $((PAGE+1)) of $PAGES \e[0;$TEXTCOL\033[0K" #"
+
+    I="1"
+    for I in 1 2 3 4 5 6 7 8 9 10; do
+                                                                                                                                                                
+        if [[ "$OPTION" == "$I" ]]; then
+            MARKER="[#]"
+        else
+            MARKER="[ ]"
+        fi
+        
+
+        NAME="$(TF_Cut '|' 1 "${RESULTS[$(((PAGE*10)+I-1))]}")" #"
+        STATUS="$(TF_Cut '|' 2 "${RESULTS[$(((PAGE*10)+I-1))]}")" #"
+
+        if [[ "$OPTION" == "$I" ]]; then
+            CURR_ITEM="$NAME"
+            CURR_DESC="$(TF_Cut '|' 3 "${RESULTS[$(((PAGE*10)+I-1))]}")" #"
+            CURR_STATUS="$STATUS"
+        fi
+
+	if [[ "$STATUS" == *"running"* ]]; then
+	    STYLE="\e[1;$TEXTCOL"
+	elif [[ "$STATUS" == *" active "* ]]; then
+	    STYLE="\e[0;$TEXTCOL"
+	else
+	    STYLE="\e[0;$LINECOL"
+	fi
+
+
+        printfxy $(($PUTY+3+$I)) $PUTX	"	$MARKER  $STYLE$(TF_Nice 70 "$NAME")\033[0K" #"
+
+    done
+
+    printfxy $(($PUTY+15)) $PUTX	"\e[0;$TEXTCOL Status: $(TF_Nice 100 "$CURR_STATUS") \033[0K"
+    printfxy $(($PUTY+16)) $PUTX	"\e[1;$TEXTCOL$(TF_Nice 100 "$CURR_DESC") \033[0K"
+    printfxy $(($PUTY+17)) $PUTX	"\033[0K"
+
+    printfxy $(($PUTY+18)) $PUTX	"\e[1;$LINECOL[s] Search                  [?] Info                [r] Report      [j] Journal\033[0K"
+    printfxy $(($PUTY+19)) $PUTX	"\e[1;$LINECOL[1] Enable                  [2] Disable             [9] Mask        [0] Umask\033[0K"
+    printfxy $(($PUTY+20)) $PUTX	"\e[1;$LINECOL[3] Start			[4] Stop		[7] Restart     [6] Reload Daemon\033[0K"
+    printfxy $(($PUTY+21)) $PUTX	"\e[1;$LINECOL[5] Reload configuration	[8] Restore defaults\033[0K"
+
+    printfxy $(($PUTY+23)) $PUTX	"[q] Cancel\e[0;$TEXTCOL \033[0K"
+
+
+} #Redraw
+
+
+
+TF_GetData () 
+{
+
+    clear
+    printf "Searching..."
+    OPTION="1"
+    PAGE="0"
+
+    RESS="$(systemctl -a | grep '.service')"
+    RESS="${RESS//.service/}"
+    RESS="${RESS//●/}"
+    
+    [[ "$PHRASE" != "" ]] && RESS="$(printf %s "$RESS" | grep -i "$PHRASE")"
+
+    mapfile -t RESULTS < <(printf %s "$RESS" | awk '{print $1 "|" $2 " " $3 " " $4 "|" $5 " " $6 " " $7 " " $8 " " $9 " " $10 " " $11 " " $12 " " $13 " " $14 " " $15 " " $16 " " $17}')
+
+    PAGES="$(printf %s "$RESS" | wc -l)"
+    PAGES=$((PAGES/10+1))
+    [[ "$PAGES" == "0" ]] && PAGES="1"
+
+    clear
+
+} #GetData
+
+
+
+
+
+
+
+
+TF_GetData
+TF_Redraw
+
+
+
+
+
+#Main execution loop
+
+while [[ "$CH" != ['q''Q'] ]]; do
+
+    if [ "$HEIGHT" != "$(/usr/bin/tput lines)" ] || [ "$WIDTH" != "$(/usr/bin/tput cols)" ]; then
+        clear
+	TF_Redraw
+    fi
+
+    read -n 1 -s CH
+
+    if [ "$CH" = "$(echo -en "\033")" ];then
+		CH3="$CH2"
+		CH2="$CH"
+	    continue
+    fi
+
+known_esc_seq=1
+last_three_keys="$CH3$CH2$CH"
+
+
+case "$last_three_keys" in
+    "$up")
+	OPTION="$(($OPTION-1))"
+        if [[ "$OPTION" == "0" ]]; then 		
+            if [[ "$PAGE" != "0" ]]; then
+                OPTION="10"
+                PAGE="$(($PAGE-1))"
+                clear
+            else
+                OPTION="1"
+            fi
+	fi
+        TF_Redraw
+     ;;
+    "$down")
+        OPTION="$(($OPTION+1))"
+        if [[ "$OPTION" == "11" ]]; then
+    	    if [ "${RESULTS[$(((PAGE+1)*10))]}" != "" ]; then
+		PAGE="$(($PAGE+1))"
+                OPTION="1"
+                clear
+            else
+                OPTION="10"
+            fi
+	fi
+	TF_Redraw
+    ;;
+   "$left")
+	if [ "$PAGE" != "0" ]; then
+		PAGE="$(($PAGE-1))"
+                clear
+    		TF_Redraw
+	fi
+    ;;
+   "$right")
+	if [ "${RESULTS[$(((PAGE+1)*10))]}" != "" ]; then
+		PAGE="$(($PAGE+1))"
+		clear
+                TF_Redraw
+	fi
+    ;;
+    "$pgup")
+	if [ "$PAGE" != "0" ]; then
+		PAGE="$(($PAGE-1))"
+                clear
+                TF_Redraw
+	fi
+    ;;
+    "$pgdn")
+	if [ "${RESULTS[$(((PAGE+1)*10))]}" != "" ]; then
+		PAGE="$(($PAGE+1))"
+		clear
+                TF_Redraw
+	fi
+    ;;
+    "$home")
+	PAGE="0"
+	OPTION="1"
+	TF_Redraw
+    ;;
+    "$end")
+        PAGE="$(($PAGES-1))"
+        OPTION="1"
+        TF_Redraw
+    ;;
+    "$enter")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f1")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f2")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f3")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f4")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f5")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f6")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f7")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f8")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f9")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f10")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f11")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f12")
+        CH=''
+        known_esc_seq=0
+    ;;
+
+    *)
+	known_esc_seq=0
+    ;;
+
+esac
+
+
+if [ $known_esc_seq -eq 0 ];then
+
+    case "$CH" in
+
+	'?')
+		/usr/bin/man "$CURR_ITEM"
+		clear
+                TF_Redraw
+	;;
+
+	['1''!'])
+		clear
+		/usr/bin/sudo /bin/systemctl enable "$CURR_ITEM.service"
+		[ "$(echo $?)" = "0" ] && printf '\n\n'%s "Service $CURR_ITEM enabled on startup"
+		TF_PAK
+		TF_GetData
+		TF_Redraw
+	;;
+	['2''@'])
+		clear
+		/usr/bin/sudo /bin/systemctl disable "$CURR_ITEM.service"
+		[ "$(echo $?)" = "0" ] && printf '\n\n'%s "Service $CURR_ITEM disabled on startup"
+		TF_PAK
+		TF_GetData
+		TF_Redraw
+	;;
+
+	['3''#'])
+		clear
+		/usr/bin/sudo /bin/systemctl start "$CURR_ITEM.service"
+		[ "$(echo $?)" = "0" ] && printf %s "Service $CURR_ITEM started"
+		TF_PAK
+		TF_GetData
+		TF_Redraw
+	;;
+	['4''$'])
+		clear
+		/usr/bin/sudo /bin/systemctl stop "$CURR_ITEM.service"
+		[ "$(echo $?)" = "0" ] && printf %s "Service $CURR_ITEM stopped"
+		TF_PAK
+		TF_GetData
+		TF_Redraw
+	;;
+
+	['5''%'])
+		clear
+		/usr/bin/sudo /bin/systemctl reload "$CURR_ITEM.service"
+		[ "$(echo $?)" = "0" ] && printf '\n\n'%s "Service $CURR_ITEM reloaded"
+		TF_PAK
+		TF_GetData
+		TF_Redraw
+	;;
+	['6''^'])
+		clear
+		/usr/bin/sudo /bin/systemctl daemon-reload "$CURR_ITEM.service"
+		[ "$(echo $?)" = "0" ] && printf '\n\n'%s "Daemon $CURR_ITEM reloaded"
+		TF_PAK
+		TF_GetData
+		TF_Redraw
+	;;
+	['7''&'])
+		clear
+		/usr/bin/sudo /bin/systemctl restart "$CURR_ITEM.service"
+		[ "$(echo $?)" = "0" ] && printf %s "Service $CURR_ITEM restarted"
+		TF_PAK
+		TF_GetData
+		TF_Redraw
+	;;
+
+	['8''*'])
+		clear
+		/usr/bin/sudo /bin/systemctl preset "$CURR_ITEM.service"
+		[ "$(echo $?)" = "0" ] && printf %s "Restored defaults for $CURR_ITEM service"
+		TF_PAK
+		TF_GetData
+		TF_Redraw
+	;;
+
+	['9''('])
+		clear
+		/usr/bin/sudo /bin/systemctl mask "$CURR_ITEM.service"
+		[ "$(echo $?)" = "0" ] &&  printf '\n\n'%s "Service $CURR_ITEM disabled on startup and masked"
+		TF_PAK
+		TF_GetData
+		TF_Redraw
+	;;
+	['0'')'])
+		clear
+		/usr/bin/sudo /bin/systemctl unmask "$CURR_ITEM.service"
+		[ "$(echo $?)" = "0" ] && printf '\n\n'%s "Service $CURR_ITEM unmasked and available"
+		TF_PAK
+		TF_GetData
+		TF_Redraw
+	;;
+
+	['j''J'])
+		clear
+		/usr/bin/sudo /bin/journalctl -u "$CURR_ITEM.service"
+		TF_GetData
+		TF_Redraw
+	;;
+
+
+
+		
+		['r''R'])
+		    {
+		    printf "\n\n\e[1;39m	----------------        SYSTEMCTL REPORT        ------------------\n\n\n\e[0;39m"
+		    /bin/systemctl -all
+		    printf "\n\n\e[1;39m	----------------          END OF REPORT          ------------------\n\n\n\e[0;39m"
+		    } | /usr/bin/less -R
+		    TF_GetData
+		    TF_Redraw
+		    ;;
+
+
+		['s''S'])
+                    
+                    /usr/bin/tput cnorm
+                    
+                    WIDTH="$(/usr/bin/tput cols)"
+                    HEIGHT="$(/usr/bin/tput lines)"
+
+                    PUTY="$(( ($HEIGHT / 2) - 10))"
+                    PUTX="$(( ($WIDTH / 2) - 45))"
+
+                    printfxy $PUTY $PUTX	"		Search for: \e[1;$TEXTCOL \033[0K"
+                    read PHRASE
+                    /usr/bin/tput civis
+		    clear
+		    TF_GetData
+		    CH=""
+		    TF_Redraw
+		;;
+
+		'*')
+		    if [ "$HEIGHT" != "$(/usr/bin/tput lines)" ] || [ "$WIDTH" != "$(/usr/bin/tput cols)" ]; then
+			TF_Redraw
+		    fi
+		;;
+    esac
+fi
+
+        CH3="$CH2"
+	CH2="$CH"
+
+
+done
+
+
+TF_OnExit 0
