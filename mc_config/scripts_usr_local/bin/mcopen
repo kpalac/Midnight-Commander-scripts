@@ -1,0 +1,263 @@
+#!/bin/bash
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+
+# Wrapper for opening files from Midnight Commander in desktop environment
+
+. /usr/local/lib/mcglobals
+[ "$MC_THUMBNAILS" != "no" ] && . /usr/local/bin/mcthumbnailer ///source
+
+
+
+
+
+MCF_Run () {
+
+    MIMETYPE="$1"
+    APP="$2"
+    FILE="$3"
+
+    if [[ -f "$APP" ]]; then
+        APP_TMP="$(< "$APP")"
+    else
+        APP_TMP="$(< "/usr/share/applications/$APP")"
+    fi
+
+    COMMAND="$(printf -- %s "$APP_TMP" | /bin/grep -m 1 '^Exec=')"
+    COMMAND="${COMMAND#*=}"
+    COMMAND_ENC="$COMMAND"
+
+    COMMAND="$(MCF_Command "$COMMAND" "$FILE")"    
+
+    if [[ "$(printf -- %s "$APP_TMP" | /bin/grep -m 1 '^Terminal=true')" != "" ]]; then
+        if [[ "$IS_TERMINAL" == 'true' ]]; then
+            eval "$COMMAND"
+        else
+            COMMAND="x-terminal-emulator -e $COMMAND"
+            eval "$COMMAND"  > /dev/null 2>&1 &
+        fi
+
+    else
+        eval "$COMMAND"  > /dev/null 2>&1 &
+    fi
+
+    if [[ "$MC_THUMBNAILS" == 'dir' ]]; then
+        TF_TNGenDir "$FILE"
+    elif [[ "$MC_THUMBNAILS" == 'file' ]]; then
+        TF_TNGen "$FILE"
+    fi
+
+
+} #MCF_Run
+
+
+
+
+
+MCF_Command () {
+
+    COMMAND="$1"
+    shift
+    ITEM="$1"
+
+    if [[ "$ITEM" != "" ]]; then
+        ITEM1="\"${ITEM//"/\\"}\""
+    else
+        ITEM1=""
+    fi
+
+    if [[ "$COMMAND" == *"%f"* ]]; then
+        COMMAND="${COMMAND//%f/$ITEM1}"
+    elif [[ "$COMMAND" == *"%F"* ]]; then
+        COMMAND="${COMMAND//%F/$ITEM1}"
+    elif [[ "$COMMAND" == *"%u"* ]]; then
+        COMMAND="${COMMAND//%u/$ITEM1}"
+    elif [[ "$COMMAND" == *"%U"* ]]; then
+        COMMAND="${COMMAND//%U/$ITEM1}"
+    else
+        COMMAND="$COMMAND $ITEM1"
+    fi
+
+    printf "$COMMAND"
+
+} # MCF_Command
+
+
+
+
+
+MCF_Open () {
+
+    if [[ "$IS_TERMINAL" == 'true' ]]; then
+        clear
+        printf "Opening..."
+    fi
+
+    FILE="$1"
+    shift
+    APP="$1"
+
+    if [[ "$FILE" == "file:///"* ]]; then
+        FILE="${FILE/file:\/\//}"
+    fi
+
+    if [[ "$APP" == "/usr/share/applications/"*".desktop" ]]; then
+        MCF_Run "dummy" "$APP" "$FILE"
+        return 0        
+    fi
+
+    if [[ "$FILE" =~ "http://"* || "$FILE" =~ "https://"* ]]; then
+        MIMETYPE="text/html"
+    else
+        MIMETYPE="$(/usr/bin/mimetype -b "$FILE")"
+    fi
+
+    if [[ "$MIMETYPE" == "text/plain" ]]; then
+        TYPE2="$(file -b "$FILE")"
+        if [[ "$TYPE2" == "SMTP mail, ASCII text"* ]]; then
+            MIMETYPE="message/rfc822"
+        fi
+    elif [[ "$MIMETYPE" == "application/x-desktop" ]]; then
+        MCF_Run "$MIMETYPE" "$FILE"
+        return 0
+    fi
+
+    if [[ "$MIMETYPE" == "message/rfc822" ]]; then
+        COMMAND="$MC_MAIL_REPLY"
+        COMMAND="$(MCF_Command "$COMMAND" "$FILE")"
+        eval "$COMMAND" > /dev/null 2>&1 &
+        
+        exit "$?"
+
+    fi
+
+    if [[ -d "$FILE" ]] && [[ "$MC_OPEN_DIR" != "" ]]; then
+        FILE="$(readlink -f "$FILE")"
+        COMMAND="$(MCF_Command "$MC_OPEN_DIR" "$FILE")"
+        eval "$COMMAND" > /dev/null 2>&1 &    
+        return 0
+    fi
+
+    if [[ -f "$HOME/.local/share/applications/defaults.list" ]]; then
+        APP="$(/bin/grep -m 1 '^'"$MIMETYPE"'=' "$HOME/.local/share/applications/defaults.list")"
+    fi
+
+    if [[ "$APP" == "" ]]; then
+        APP="$(/bin/grep '^'"$MIMETYPE"'=' /usr/share/applications/defaults.list)"
+    fi
+    if [[ "$APP" == "" ]]; then
+        APP="$(/bin/grep -m 1 '^MimeType=.*'"$MIMETYPE"';' /usr/share/applications/*.desktop)"
+        APP="${APP%%:*}"
+        APP="${APP##*/}"
+    else
+        APP="${APP#*=}"
+    fi
+
+    if [[ "$APP" != "" ]]; then
+        MCF_Run "$MIMETYPE" "$APP" "$FILE"
+    else
+        if [[ "$IS_TERMINAL" == 'true' ]]; then
+            printf "\nCould not find suitable application..."
+            if [[ "$OPEN_WITH" == 'true' ]]; then
+                /usr/local/bin/mcsearch -file "$FILE"
+                exit 0
+            fi
+        else
+            [[ "$MC_NOTIFY" == 'true' ]] &&  /usr/bin/notify-send -t 0 -i error "Could not find suitable application ($MIMETYPE)!"
+            if [[ "$OPEN_WITH" == 'true' ]]; then
+                COMMAND="$(MCF_Command "$MC_OPEN_FALLBACK" "$FILE")"
+                eval "$COMMAND" > /dev/null 2>&1 &
+                exit 0
+            fi
+        fi
+    fi
+
+} #MCF_Open
+
+
+
+
+
+
+
+
+OPEN_WITH="true"
+PARAMS_END="false"
+APP=""
+IS_TERMINAL="true"
+
+
+while [[ "$1" != "" ]]; do
+
+    ARG="$1"
+    shift
+
+    case "$ARG" in
+        '-w')
+            if [[ "$PARAMS_END" == "false" ]]; then
+                APP="$1"
+                shift
+            else
+                MCF_Open "$ARG" "$APP"
+            fi
+        ;;
+        '-no-terminal')
+            if [[ "$PARAMS_END" == "false" ]]; then 
+                IS_TERMINAL="false"    
+            else
+                MCF_Open "$ARG" "$APP"
+            fi
+        ;;
+        '-no-open-with')
+            if [[ "$PARAMS_END" == "false" ]]; then 
+                OPEN_WITH="false"
+            else
+                MCF_Open "$ARG" "$APP"
+            fi
+        ;;
+        '--')
+            PARAMS_END="true"
+        ;;
+        '-h')
+            if [[ "$PARAMS_END" == "false" ]]; then
+                
+                HELP="
+mcopen [option] [files]
+
+    Open with assigned desktop application according to detected mimetype
+
+    option:
+        -w [app]                open file with selected .desktop application file
+        -no-terminal            not in terminal. Launch terminal apps in separate window
+        -no-open-with           don't launch open-with CLI dialog in case no application is found
+        -h                      show this
+
+
+"
+                printf %s "$HELP"
+                exit
+            else
+                MCF_Open "$ARG" "$APP"
+            fi
+        ;;
+        *) MCF_Open "$ARG" "$APP" ;;
+    esac
+
+done
+

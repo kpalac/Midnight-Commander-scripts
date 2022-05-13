@@ -1,0 +1,474 @@
+#!/bin/bash
+
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+
+# This is a script to search packages for Midnight Commander
+
+
+
+. /usr/local/lib/mcCLIinterface
+
+
+
+
+if [[ -x /usr/bin/snap ]]; then
+    SNAP="true"
+else
+    SNAP="false"
+fi
+
+
+
+PHRASE="$@"
+
+OPTION="1"
+PAGE="0"
+PAGES="0"
+
+CURR_ITEM=""
+CURR_DESC=""
+
+MODE="apt"
+
+declare -a RESULTS
+
+
+
+TF_Redraw ()
+{
+
+    WIDTH="$(/usr/bin/tput cols)"
+    HEIGHT="$(/usr/bin/tput lines)"
+
+    PUTY="$(( ($HEIGHT / 2) - 10))"
+    PUTX="$(( ($WIDTH / 2) - 45))"
+
+    if [[ "$MODE" == "apt" ]]; then
+        printfxy $PUTY $PUTX	"		Search APT Packages for: \e[1;$TEXTCOL $(TF_Nice 100 "$PHRASE")\e[0;$TEXTCOL\033[0K"
+    elif [[ "$MODE" == "snap" ]]; then
+        printfxy $PUTY $PUTX	"		Search SNAP Packages for: \e[1;$TEXTCOL $(TF_Nice 100 "$PHRASE")\e[0;$TEXTCOL\033[0K"
+    fi
+
+    printfxy $(($PUTY+2)) $PUTX	"\e[1;$LINECOL	Page $((PAGE+1)) of $PAGES \e[0;$TEXTCOL\033[0K" #"
+
+    I="1"
+    for I in 1 2 3 4 5 6 7 8 9 10; do
+                                                                                                                                                                
+        if [[ "$OPTION" == "$I" ]]; then
+            MARKER="[#]"
+        else
+            MARKER="[ ]"
+        fi
+        
+
+        NAME="$(TF_Cut ' - ' 1 "${RESULTS[$(((PAGE*10)+I-1))]}")" #"
+
+        if [[ "$OPTION" == "$I" ]]; then
+            CURR_DESC="$(TF_Cut ' - ' 2 "${RESULTS[$(((PAGE*10)+I-1))]}")" #"        
+            CURR_ITEM="$(TF_Cut ' - ' 1 "${RESULTS[$(((PAGE*10)+I-1))]}")" #"
+        fi
+
+        printfxy $(($PUTY+4+$I)) $PUTX	"	$MARKER  \e[1;$TEXTCOL $(TF_Nice 70 "$NAME") \e[0;$TEXTCOL\033[0K" #"
+
+    done
+
+    printfxy $(($PUTY+16)) $PUTX	"\e[0;$TEXTCOL$(TF_Nice 100 "$CURR_DESC") \033[0K"
+    printfxy $(($PUTY+17)) $PUTX	"\033[0K"
+    
+    if [[ "$SNAP" == 'true' ]]; then
+        printfxy $(($PUTY+18)) $PUTX	"\e[1;$LINECOL[s] New search    [t] Toggle APT/SNAP\033[0K"
+    else
+        printfxy $(($PUTY+18)) $PUTX	"\e[1;$LINECOL[s] New search\033[0K"
+    fi
+    printfxy $(($PUTY+19)) $PUTX	"\e[1;$LINECOL[i] Install       [r] Remove              [p] Purge       [u] Update package\033[0K"
+    printfxy $(($PUTY+20)) $PUTX	"\e[1;$LINECOL[?] Info          [h] Homepage   \033[0K"
+    printfxy $(($PUTY+21)) $PUTX	"\e[1;$LINECOL[f] Refresh cache [g] Update all          [A] Autoremove unused packages\033[0K"
+    printfxy $(($PUTY+23)) $PUTX	"[q] Cancel\e[0;$TEXTCOL \033[0K"
+
+} #Redraw
+
+
+
+
+
+
+TF_GetData ()
+{
+    clear
+    printf "Searching..."
+
+    if [[ "$MODE" == "apt" ]]; then
+        RESS="$(/usr/bin/apt-cache search "$PHRASE")"
+    elif [[ "$MODE" == "snap" ]]; then
+        RESS=$(snap find "$PHRASE" | awk '{NR>1; $1=$1" - "; $2=$3=$4=""; print $0}' |  tail -n +2)
+    fi
+
+    mapfile -t RESULTS < <(printf %s "$RESS")
+
+    PAGES="$(printf %s "$RESS" | wc -l)"
+    PAGES=$((PAGES/10+1))
+    [[ "$PAGES" == "0" ]] && PAGES="1"
+
+    OPTION="1"
+    PAGE="0"
+
+    clear
+
+} #GetData
+
+
+
+
+
+TF_GetData
+TF_Redraw
+
+
+
+
+TF_GetInfo () {
+
+    SMODE="$1"
+
+    if [[ "$MODE" == 'apt' ]]; then
+        INFO="$(/usr/bin/apt-cache show "$CURR_ITEM")"
+    elif [[ "$MODE" == 'snap' ]]; then
+        INFO="$(/usr/bin/snap info "$CURR_ITEM")"
+    fi
+
+    if [[ "$SMODE" == "www" ]]; then
+        if [[ "$MODE" == 'apt' ]]; then
+            URL="$(printf %s "$INFO" | /bin/grep '^Homepage: ')"
+            URL="$(TF_Cut ': ' 2 "$URL")"
+        elif [[ "$MODE" == 'snap' ]]; then
+            URL="$(printf %s "$INFO" | /bin/grep ' Homepage: ')"
+            URL="$(TF_Cut ': ' 2 "$URL")"
+        fi
+
+        if [ "$URL" != "" ] && [ "$(/usr/bin/whoami)" != "root" ]; then
+	    /usr/local/bin/mcopen "$URL"
+        fi
+    else
+        printf %s "$INFO" | less -R
+    fi
+
+} #TF_GetInfo
+
+
+
+
+
+
+#Main execution loop
+
+while [[ "$CH" != ['q''Q'] ]]; do
+
+    if [ "$HEIGHT" != "$(/usr/bin/tput lines)" ] || [ "$WIDTH" != "$(/usr/bin/tput cols)" ]; then
+	TF_Redraw
+    fi
+
+    read -n 1 -s CH
+
+    if [ "$CH" = "$(echo -en "\033")" ];then
+		CH3="$CH2"
+		CH2="$CH"
+	    continue
+    fi
+
+known_esc_seq=1
+last_three_keys="$CH3$CH2$CH"
+
+
+case "$last_three_keys" in
+    "$up")
+	OPTION="$(($OPTION-1))"
+        if [[ "$OPTION" == "0" ]]; then 		
+            if [[ "$PAGE" != "0" ]]; then
+                OPTION="10"
+                PAGE="$(($PAGE-1))"
+                clear
+            else
+                OPTION="1"
+            fi
+	fi
+        TF_Redraw
+     ;;
+    "$down")
+        OPTION="$(($OPTION+1))"
+        if [[ "$OPTION" == "11" ]]; then
+    	    if [ "${RESULTS[$(((PAGE+1)*10))]}" != "" ]; then
+		PAGE="$(($PAGE+1))"
+                OPTION="1"
+                clear
+            else
+                OPTION="10"
+            fi
+	fi
+	TF_Redraw
+    ;;
+   "$left")
+	if [ "$PAGE" != "0" ]; then
+		PAGE="$(($PAGE-1))"
+                clear
+    		TF_Redraw
+	fi
+    ;;
+   "$right")
+	if [ "${RESULTS[$(((PAGE+1)*10))]}" != "" ]; then
+		PAGE="$(($PAGE+1))"
+		clear
+                TF_Redraw
+	fi
+    ;;
+    "$pgup")
+	if [ "$PAGE" != "0" ]; then
+		PAGE="$(($PAGE-1))"
+                clear
+                TF_Redraw
+	fi
+    ;;
+    "$pgdn")
+	if [ "${RESULTS[$(((PAGE+1)*10))]}" != "" ]; then
+		PAGE="$(($PAGE+1))"
+		clear
+                TF_Redraw
+	fi
+    ;;
+    "$home")
+	PAGE="0"
+	OPTION="1"
+	TF_Redraw
+    ;;
+    "$end")
+        PAGE="$(($PAGES-1))"
+        OPTION="1"
+        TF_Redraw
+    ;;
+    "$enter")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f1")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f2")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f3")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f4")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f5")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f6")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f7")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f8")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f9")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f10")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f11")
+        CH=''
+        known_esc_seq=0
+    ;;
+    "$f12")
+        CH=''
+        known_esc_seq=0
+    ;;
+
+    *)
+	known_esc_seq=0
+    ;;
+
+esac
+
+
+
+if [ $known_esc_seq -eq 0 ];then
+
+    case "$CH" in
+		'?')
+		    TF_GetInfo
+		;;
+		['h''H'])
+		    TF_GetInfo "www"
+		;;
+                ['i''I'])
+                    clear
+                    if [[ "$MODE" == 'apt' ]]; then
+                        /usr/bin/sudo /usr/bin/apt-get install "$CURR_ITEM"
+                    elif [[ "$MODE" == 'snap' ]]; then
+                        /usr/bin/sudo snap install "$CURR_ITEM"
+                    fi
+                    TF_Pak
+                    clear
+                    CH=""
+                    TF_Redraw
+                ;;
+                ['r''R'])
+                    clear
+                    if [[ "$MODE" == 'apt' ]]; then
+                        /usr/bin/sudo /usr/bin/apt-get remove "$CURR_ITEM"
+                    elif [[ "$MODE" == 'snap' ]]; then
+                        /usr/bin/sudo snap remove "$CURR_ITEM"
+                    fi
+                    TF_PAK
+                    clear
+                    CH=""
+                    TF_Redraw
+                ;;
+                ['p''P'])
+                    clear
+                    if [[ "$MODE" == 'apt' ]]; then
+                        /usr/bin/sudo /usr/bin/apt-get remove --purge "$CURR_ITEM"
+                    elif [[ "$MODE" == 'snap' ]]; then
+                        clear
+                        printf "Option not available for SNAP..."
+                    fi
+                    TF_PAK
+                    clear
+                    CH=""
+                    TF_Redraw
+                ;;
+                'A')
+                    if [[ "$MODE" == 'apt' ]]; then
+                        /usr/bin/sudo /usr/bin/apt-get autoremove
+                    elif [[ "$MODE" == 'snap' ]]; then
+                        clear
+                        printf "Option not available for SNAP..."
+                    fi
+                    TF_PAK
+                    clear
+                    CH=""
+                    TF_Redraw
+                ;;
+
+
+		['f''F'])
+		    clear
+                    if [[ "$MODE" == 'apt' ]]; then
+		        /usr/bin/sudo /usr/bin/apt-get update
+                    elif [[ "$MODE" == 'snap' ]]; then
+                        snap refresh --list
+                    fi
+                    TF_PAK
+                    clear
+		    TF_GetData
+		    CH=""
+		    TF_Redraw
+		;;
+		['u''U'])
+		    clear
+                    if [[ "$MODE" == 'apt' ]]; then
+		        /usr/bin/sudo /usr/bin/apt-get  --only-upgrade install "$CURR_ITEM"
+                    elif [[ "$MODE" == 'snap' ]]; then
+                        snap refresh "$CURR_ITEM"
+                    fi
+                    TF_PAK
+                    clear
+		    TF_GetData
+		    CH=""
+		    TF_Redraw
+		;;
+		['g''G'])
+		    clear
+                    if [[ "$MODE" == 'apt' ]]; then
+		        /usr/bin/sudo /usr/bin/apt-get upgrade
+                    elif [[ "$MODE" == 'snap' ]]; then
+                        snap refresh
+                    fi
+                    TF_PAK
+                    clear
+		    TF_GetData
+		    CH=""
+		    TF_Redraw
+		;;
+
+                ['s''S'])
+                    /usr/bin/tput cnorm
+                    
+                    WIDTH="$(/usr/bin/tput cols)"
+                    HEIGHT="$(/usr/bin/tput lines)"
+
+                    PUTY="$(( ($HEIGHT / 2) - 10))"
+                    PUTX="$(( ($WIDTH / 2) - 45))"
+
+                    if [[ "$MODE" == 'apt' ]]; then
+                        printfxy $PUTY $PUTX	"		Search APT for: \e[1;$TEXTCOL \033[0K"
+                    elif [[ "$MODE" == 'snap' ]]; then
+                        printfxy $PUTY $PUTX	"		Search SNAP for: \e[1;$TEXTCOL \033[0K"
+                    fi
+                    read PHRASE
+                    /usr/bin/tput civis
+		    clear
+		    TF_GetData
+		    CH=""
+		    TF_Redraw
+                ;;
+                ['t''T'])
+                    if [[ "$SNAP" == 'true' ]]; then
+                        if [[ "$MODE" == 'apt' ]]; then
+                            MODE='snap'
+                        elif [[ "$MODE" == 'snap' ]]; then
+                            MODE='apt'
+                        fi
+                    fi
+		    clear
+		    TF_GetData
+		    CH=""
+		    TF_Redraw
+                ;;
+		'*')
+		    if [ "$HEIGHT" != "$(/usr/bin/tput lines)" ] || [ "$WIDTH" != "$(/usr/bin/tput cols)" ]; then
+			TF_Redraw
+		    fi
+		;;
+    esac
+fi
+
+        CH3="$CH2"
+	CH2="$CH"
+
+
+done
+
+
+TF_OnExit 0

@@ -1,0 +1,117 @@
+#!/bin/bash
+
+
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+
+
+
+#  Wrapper for generating checksum files to use in Midnight Commander
+
+. /usr/local/lib/mcglobals
+
+
+
+
+SARG="$1"
+shift
+
+
+if [ "$SARG" = "-help" ]; then
+
+T_HELP="
+mcchecksums [algorithm] [files to process]:
+
+    Creates checksum file(s) using a specified algorithm. 
+    Available options: md5, sha1, sha224, sha256, sha384, sha512, sha512224, sha512256, chksum, sysv, bsd
+
+
+"
+    printf %s "$T_HELP"
+    exit 2
+fi
+
+
+
+while [ -n "$1" ]; do
+
+    SFILE="$1"
+    SFILE="$(/bin/readlink -f "$SFILE")"
+    shift
+
+
+    if [ "$SARG" = "md5" ]; then
+	    /usr/bin/printf '\n'%s'\n' "Generating checksum file ($SFILE.md5)..."
+	    SNEW="$(TF_FileName "$PWD" "$SFILE".md5)"
+	    /usr/bin/md5sum "$SFILE" | /usr/bin/cut -d ' ' -f1 > "$SNEW"
+    
+
+    elif [ "$SARG" = "sha1" ]; then
+    	    /usr/bin/printf '\n'%s'\n' "Generating checksum file ($SFILE.sha1)..."
+	    SNEW="$(MCF_FileName "$PWD" "$SFILE".sha1)"
+	    /usr/bin/shasum -a 1 "$SFILE" | /usr/bin/cut -d ' ' -f1 > "$SNEW"
+    elif [ "$SARG" = "sha224" ]; then
+    	    /usr/bin/printf '\n'%s'\n' "Generating checksum file ($SFILE.sha224)..."
+	    SNEW="$(MCF_FileName "$PWD" "$SFILE".sha224)"
+	    /usr/bin/shasum -a 224 "$SFILE" | /usr/bin/cut -d ' ' -f1 > "$SNEW"
+    elif [ "$SARG" = "sha256" ]; then
+    	    /usr/bin/printf '\n'%s'\n' "Generating checksum file ($SFILE.sha256)..."
+	    SNEW="$(MCF_FileName "$PWD" "$SFILE".sha256)"
+	    /usr/bin/shasum -a 256 "$SFILE" | /usr/bin/cut -d ' ' -f1 > "$SNEW"
+    elif [ "$SARG" = "sha384" ]; then
+    	    /usr/bin/printf '\n'%s'\n' "Generating checksum file ($SFILE.sha384)..."
+	    SNEW="$(MCF_FileName "$PWD" "$SFILE".sha384)"
+	    /usr/bin/shasum -a 384 "$SFILE" | /usr/bin/cut -d ' ' -f1 > "$SNEW"
+    elif [ "$SARG" = "sha512" ]; then
+    	    /usr/bin/printf '\n'%s'\n' "Generating checksum file ($SFILE.sha512)..."
+	    SNEW="$(MCF_FileName "$PWD" "$SFILE".sha512)"
+	    /usr/bin/shasum -a 512 "$SFILE" | /usr/bin/cut -d ' ' -f1 > "$SNEW"
+    elif [ "$SARG" = "sha512224" ]; then
+    	    /usr/bin/printf '\n'%s'\n' "Generating checksum file ($SFILE.sha512224)..."
+	    SNEW="$(MCF_FileName "$PWD" "$SFILE".sha512224)"
+	    /usr/bin/shasum -a 512224 "$SFILE" | /usr/bin/cut -d ' ' -f1 > "$SNEW"
+    elif [ "$SARG" = "sha512256" ]; then
+    	    /usr/bin/printf '\n'%s'\n' "Generating checksum file ($SFILE.sha512256)..."
+	    SNEW="$(MCF_FileName "$PWD" "$SFILE".sha512256)"
+	    /usr/bin/shasum -a 512256 "$SFILE" | /usr/bin/cut -d ' ' -f1 > "$SNEW"
+    
+    
+
+    elif [ "$SARG" = "cksum" ]; then
+	    /usr/bin/printf '\n'%s'\n' "Generating checksum file ($SFILE.cksum)..."
+	    SNEW="$(MCF_FileName "$PWD" "$SFILE".cksum)"
+	    /usr/bin/cksum "$SFILE" | /usr/bin/cut -d ' ' -f1,2 > "$SNEW"
+
+    elif [ "$SARG" = "sysv" ]; then
+	    /usr/bin/printf '\n'%s'\n' "Generating checksum file ($SFILE.sysv)..."
+	    SNEW="$(MCF_FileName "$PWD" "$SFILE".sysv)"
+	    /usr/bin/sum -s "$SFILE" | /usr/bin/cut -d ' ' -f1,2 > "$SNEW"
+    elif [ "$SARG" = "bsd" ]; then
+	    /usr/bin/printf '\n'%s'\n' "Generating checksum file ($SFILE.bsdsum)..."
+	    SNEW="$(MCF_FileName "$PWD" "$SFILE".bsdsum)"
+	    /usr/bin/sum -r "$SFILE" > "$SNEW"
+    else
+	    /usr/bin/printf '\n'%s'\n' "$SELECTED is not a valid checksum option"
+	    /usr/bin/printf %s'\n\n' "$T_Try"
+	    exit 1
+    fi
+
+done
+
+exit 0
