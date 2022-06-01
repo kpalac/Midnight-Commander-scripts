@@ -1,0 +1,195 @@
+#!/bin/bash
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+
+
+# Normalize names and extension of files. Helper for Midnight Commander
+
+. /usr/local/lib/mcglobals
+
+
+if [ "$1" = "help" ]; then
+
+T_HELP="
+
+mcnnormalize [files]:
+
+    Normalize extensions of given files according to detected mimetypes
+
+"
+
+    printf %s "$T_HELP"
+    exit 2
+fi
+
+
+
+while [ -n "$1" ]; do
+
+    SFILE="$1"
+    SFILE="$(/bin/readlink -f "$SFILE")"
+    shift
+
+
+printf '\n'%s'\n' "Processing $SFILE ..."
+
+SMIMETYPE="$(/usr/bin/mimetype -M -b "$SFILE")"
+
+printf '\n'%s'\n' "Mimetype $SMIMETYPE"
+
+
+BASE_T="${SFILE##*/}"
+if [[ "$BASE_T" == *"."* ]]; then
+    CURR_EXT="${BASE_T##*.}"
+    BASE_T="${BASE_T%.*}"
+else
+    CURR_EXT=""
+fi
+
+
+
+#Special cases...
+if [ "$CURR_EXT" = "xz" ] \
+|| [ "$CURR_EXT" = "z" ] \
+|| [ "$CURR_EXT" = "gz" ] \
+|| [ "$CURR_EXT" = "bz" ] \
+|| [ "$CURR_EXT" = "gz" ] \
+|| [ "$CURR_EXT" = "bz2" ] \
+|| [ "$CURR_EXT" = "zip" ] \
+|| [ "$CURR_EXT" = "lrz" ] \
+|| [ "$CURR_EXT" = "lzo" ] \
+|| [ "$CURR_EXT" = "tgz" ]; then
+
+ CURR_EXT1="${SBASE_T##*.}"
+
+if [ "$SCURR_EXT1" = "tar" ] \
+|| [ "$SCURR_EXT1" = "wpz" ] \
+|| [ "$SCURR_EXT1" = "ntar" ] \
+|| [ "$SCURR_EXT1" = "xmi" ] \
+|| [ "$SCURR_EXT1" = "trc0" ] \
+|| [ "$SCURR_EXT1" = "pcap" ] \
+|| [ "$SCURR_EXT1" = "abw" ] \
+|| [ "$SCURR_EXT1" = "img" ] \
+|| [ "$SCURR_EXT1" = "snoop" ] \
+|| [ "$SCURR_EXT1" = "bfr" ] \
+|| [ "$SCURR_EXT1" = "fb2" ] \
+|| [ "$SCURR_EXT1" = "scd" ] \
+|| [ "$SCURR_EXT1" = "epsi" ] \
+|| [ "$SCURR_EXT1" = "xcf" ] \
+|| [ "$SCURR_EXT1" = "5vw" ] \
+|| [ "$SCURR_EXT1" = "pcapng" ] \
+|| [ "$SCURR_EXT1" = "trc1" ] \
+|| [ "$SCURR_EXT1" = "psf" ] \
+|| [ "$SCURR_EXT1" = "pdf" ] \
+|| [ "$SCURR_EXT1" = "snf" ] \
+|| [ "$SCURR_EXT1" = "tpc" ] \
+|| [ "$SCURR_EXT1" = "tr1" ] \
+|| [ "$SCURR_EXT1" = "qti" ] \
+|| [ "$SCURR_EXT1" = "ps" ] \
+|| [ "$SCURR_EXT1" = "pcf" ] \
+|| [ "$SCURR_EXT1" = "dvi" ] \
+|| [ "$SCURR_EXT1" = "cpio" ] \
+|| [ "$SCURR_EXT1" = "sla" ] \
+|| [ "$SCURR_EXT1" = "fonts" ] \
+|| [ "$SCURR_EXT1" = "pdf" ] \
+|| [ "$SCURR_EXT1" = "raw-disk-image" ]; then
+
+    SFILE="${SFILE%\.*}"
+    CURR_EXT="$CURR_EXT1.$CURR_EXT"
+
+fi
+
+fi
+
+
+
+
+
+if [ "$SMIMETYPE" = "text/plain" ]; then
+    printf "Plaintext file - no changes made\n"
+    continue
+
+elif [ "$SMIMETYPE" = "application/zip" ] || [ "$SMIMETYPE" = "application/gzip" ]; then
+
+    TEMP="$(/usr/bin/mimetype -b "$SFILE")"
+    if [ "$SMIMETYPE" != "$TEMP" ]; then
+	export SMIMETYPE="$TEMP"
+    fi
+
+elif [ -d "$SFILE" ]; then
+    printf %s '\n' "Folder - no changes made"
+    continue
+fi
+
+
+SMIMETYPE_F="${SMIMETYPE//\//\\\/}"
+TEMP="$(< /usr/share/mime/globs)"
+
+
+
+
+
+
+if [[ "$TEMP" == *"$SMIMETYPE:*.$CURR_EXT"* ]] && [ "$CURR_EXT" != "" ]; then
+    printf "Extension correct ($CURR_EXT) - no changes necessary\n"
+    SEXT="$CURR_EXT"
+else
+    SEXT="$(printf %s "$TEMP" | /usr/bin/awk -F'*.' '/'$SMIMETYPE_F'/ && ++n==1 {print $2}')"
+fi
+
+
+if [ "$SEXT" != "" ]; then
+    printf %s'\n' "Extension *.$SEXT"
+    
+	SNEW_FILE="${SFILE%\.*}"
+
+	while [[ "$SNEW_FILE" == "-"* || "$SNEW_FILE" == " "* ]]; do
+	    SNEW_FILE="${SNEW_FILE:1}"
+	done
+
+	SNEW_FILE="$SNEW_FILE.$SEXT"
+	SNEW_FILE="${SNEW_FILE##*/}"
+	if [[ "${SNEW_FILE,,}" =~ .*\.([o][dto][tsgcpifmh]|do[tc]|doc[xXmM]|xls|xxls|p[pt]s|p[pt]s[xmt]|pdf|pdf[1234]|xpdf|epub|ps|eps|djvu|djv|mobi|mpg|mpeg|mp4|avi|ogv|mov|wm[va]|webm|rmvb|mkv|mk3d|divx|mp[123a]|mpga|wav|ogg|midi|cda|apu|raw|mpg3|m2s) ]]; then
+		SNEW_FILE="${SNEW_FILE//_/ }"
+		SNEW_FILE="${SNEW_FILE//|/:}"
+		SNEW_FILE="${SNEW_FILE// - /|}"
+		SNEW_FILE="${SNEW_FILE//-/ }"
+		SNEW_FILE="${SNEW_FILE//|/ - }"
+		SNEW_FILE="${SNEW_FILE//%20/ }"
+		SNEW_FILE="${SNEW_FILE//%2520/ }"
+		SNEW_FILE="${SNEW_FILE//%2/}"
+		SNEW_FILE="${SNEW_FILE^}"
+	fi
+
+	if [ "$SFILE" != "$SNEW_FILE" ]; then
+	    SNEW_FILE="$(MCF_FileName "$PWD" "$SNEW_FILE")"
+
+	    printf %s'\n' "New name: $SNEW_FILE"
+
+	    /bin/mv "$SFILE" "$PWD/$SNEW_FILE"
+	    [ "$?" = "0" ] && printf %s "Filename changed."
+	    printf "\n"
+	fi
+fi
+
+
+
+done
+
+

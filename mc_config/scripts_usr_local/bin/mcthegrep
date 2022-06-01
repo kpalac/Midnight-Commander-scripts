@@ -1,0 +1,137 @@
+#!/bin/bash
+
+
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+
+
+
+# Script for combining various CLI search tools (greps - most commonly) to search multiple documents
+
+
+SPHRASE="$1"
+shift
+
+INDEX="/tmp/mc_grep_index$RANDOM.tmp"
+TEXT_FILES="/tmp/mc_grep_files$RANDOM"
+RESULTS="/tmp/mc_grep_results$RANDOM"
+
+/bin/mkdir -- "$TEXT_FILES"
+
+
+
+
+#Divide files into categories and create lists
+while [  -n "$1"  ]; do
+
+	SNEXT="$1"
+	shift
+	MIMETYPE="$(/usr/bin/mimetype -b "$SNEXT")"
+
+
+    if [[ "$MIMETYPE" == "application/pdf" ]]; then
+
+	SNEXT="${SNEXT//\\/\\\\}"
+	SNEXT="${SNEXT//\"/\\\"}"
+	SPDF_LIST="$SPDF_LIST\"$SNEXT\" "
+
+    elif [[ "$MIMETYPE" == "application/epub+zip" ]]; then
+	SRESULTS_T="$(/usr/local/bin/mcepubparse.pl text "$SNEXT" | /bin/grep -i --color=always -n "$SPHRASE")"
+	SNEXT_D=$'\e[0;35m'"$SNEXT"$'\e[0;36m'":"
+	SRESULTS_T="$SNEXT_D$SRESULTS_T"
+	SRESULTS_T="${SRESULTS_T//$'\n'/$'\n'$SNEXT_D}"
+	SEPUB_RES="$SEPUB_RES$SRESULTS_T"
+
+	
+    elif [[ "$MIMETYPE" == "application/vnd.oasis.opendocument.text" ]]; then
+
+	SRESULTS_T="$(/usr/local/bin/mcodtparse.pl "$SNEXT" | /bin/grep -i --color=always -n "$SPHRASE")"
+	SNEXT_D=$'\e[0;35m'"$SNEXT"$'\e[0;36m'":"
+	SRESULTS_T="$SNEXT_D$SRESULTS_T"
+	SRESULTS_T="${SRESULTS_T//$'\n'/$'\n'$SNEXT_D}"
+	SDOC_RES="$SDOC_RES"$'\n'"$SRESULTS_T"
+
+    elif [[ "$MIMETYPE" =~ "application/vnd"*"wordprocessingml.document" ]]; then
+
+	SRESULTS_T="$(/usr/local/bin/mcdocxparse.pl "$SNEXT" | /bin/grep -i --color=always -n "$SPHRASE")"
+	SNEXT_D=$'\e[0;35m'"$SNEXT"$'\e[0;36m'":"
+	SRESULTS_T="$SNEXT_D$SRESULTS_T"
+	SRESULTS_T="${SRESULTS_T//$'\n'/$'\n'$SNEXT_D}"
+	SDOC_RES="$SDOC_RES"$'\n'"$SRESULTS_T"
+
+    elif [[ "$MIMETYPE" =~ "application/msword" ]]; then
+
+	SRESULTS_T="$(/usr/bin/antiword "$SNEXT" | /bin/grep -i --color=always -n "$SPHRASE")"
+	SNEXT_D=$'\e[0;35m'"$SNEXT"$'\e[0;36m'":"
+	SRESULTS_T="$SNEXT_D$SRESULTS_T"
+	SRESULTS_T="${SRESULTS_T//$'\n'/$'\n'$SNEXT_D}"
+	SDOC_RES="$SDOC_RES"$'\n'"$SRESULTS_T"
+
+    elif [[ "$MIMETYPE" =~ "text/html" ]]; then
+
+	SRESULTS_T="$(/usr/bin/w3m -dump "$SNEXT" | /bin/grep -i --color=always -n "$SPHRASE")"
+	SNEXT_D=$'\e[0;35m'"$SNEXT"$'\e[0;36m'":"
+	SRESULTS_T="$SNEXT_D$SRESULTS_T"
+	SRESULTS_T="${SRESULTS_T//$'\n'/$'\n'$SNEXT_D}"
+	SWEB_RES="$SWEB_RES"$'\n'"$SRESULTS_T"
+
+
+    else
+
+	SNEXT="${SNEXT//\\/\\\\}"
+	SNEXT="${SNEXT//\"/\\\"}"
+	STXT_LIST="$STXT_LIST\"$SNEXT\" "
+
+    fi
+
+done
+
+
+
+
+
+
+
+if [[ "$STXT_LIST" =~ *" " ]]; then
+    STXT_LIST="${STXT_LIST%" "}"
+fi
+if [[ "$SPDF_LIST" =~ *" " ]]; then
+    SPDF_LIST="${SPDF_LIST%" "}"
+fi
+
+
+clear
+printf "\n\n\n	\e[1;39m---------------- Text --------------------------------------------------\e[0;39m \n\n"
+if [ "$STXT_LIST" != "" ]; then
+    eval "/bin/grep -i --color=always -n -H "$SPHRASE" "$STXT_LIST""
+fi
+
+printf "\n\n\n	\e[1;39m---------------- Documents ---------------------------------------------\e[0;39m \n\n"
+printf %s "$SDOC_RES"
+
+printf "\n\n\n	\e[1;39m---------------- Books -------------------------------------------------\e[0;39m \n\n"
+if [ "$SPDF_LIST" != "" ]; then
+    eval "/usr/bin/pdfgrep -n -i --color=always -H $SPHRASE "$SPDF_LIST""
+fi
+printf %s "$SEPUB_RES"
+
+printf "\n\n\n	\e[1;39m---------------- Web ----------------------------------------------------\e[0;39m \n\n"
+printf %s "$SWEB_RES"
+
+

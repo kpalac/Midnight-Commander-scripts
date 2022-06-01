@@ -1,0 +1,125 @@
+#!/bin/bash
+
+
+
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#  Author: Karol Pałac (lolko), palac.karol@gmail.com
+
+
+
+
+
+# Create new document. Wrapper for Midnight Commander
+
+
+. /usr/local/lib/mcglobals
+
+TMPL_DIR="$HOME/.local/share/mc_templates"
+if [ ! -d TMPL_DIR ]; then
+    mkdir "$TMPL_DIR"
+fi
+
+
+
+if [ "$1" = "help" ]; then
+
+T_HELP="
+
+mcnewdocument [target directory] [file name]:
+
+    Create new document in target directory with a predefined template. Template from $TMPL_DIR will be copied
+    to the current directory with a new file name. Templates are marked by extensions, so typing
+    \"new_script.sh\" will copy \"$TMPL_DIR/sh\" file and edit it with default application.
+
+    User can define template for any extension
+
+
+"
+
+    printf %s "$T_HELP"
+    exit 2
+fi
+
+
+
+DIR="$1"
+shift
+
+SNAME="$@"
+if [ "$SNAME" = "" ]; then
+    printf '\n\n'%s'\n' "No filename given..."
+    exit 1
+fi
+
+
+
+SNAME="$(MCF_FileName "$DIR" "$SNAME")"
+EXT="${SNAME##*.}"
+BASE="${SNAME%\.*}"
+
+
+
+
+
+TEMPLATE="$TMPL_DIR"/"$EXT"
+if [ ! -f "$TEMPLATE" ]; then
+    printf '\n\n'%s'\n\n' "No template found..."
+    printf "" > "$DIR"/"$SNAME"
+    /usr/bin/mcedit "$SNAME"
+else
+
+    /bin/cp -p -- "$TEMPLATE" "$DIR"/"$SNAME"
+    /bin/chown "$USER":"$USER" "$DIR"/"$SNAME"
+
+
+    export MIMETYPE="$(/usr/bin/mimetype -b "$DIR"/"$SNAME")"
+
+case "$MIMETYPE" in
+
+    'text/plain')
+		/usr/bin/mcedit "$DIR"/"$SNAME"
+    ;;
+    'text/html')
+		/usr/bin/mcedit "$DIR"/"$SNAME"
+    ;;
+    'text/x-python')
+		/usr/bin/mcedit "$DIR"/"$SNAME"
+    ;;
+    'text/x-perl')
+		/usr/bin/mcedit "$DIR"/"$SNAME"
+    ;;
+    'application/x-shellscript')
+		/usr/bin/mcedit "$DIR"/"$SNAME"
+    ;;
+    'application/x-m4')
+		/usr/bin/mcedit "$DIR"/"$SNAME"
+    ;;
+    'text/x-csrc')
+		/usr/bin/mcedit "$DIR"/"$SNAME"
+    ;;
+    'application/xml')
+		/usr/bin/mcedit "$DIR"/"$SNAME"
+    ;;
+    *)
+	/usr/local/bin/mcopen "$DIR"/"$SNAME" &
+    ;;
+
+esac
+
+fi
+
+exit 0
+
